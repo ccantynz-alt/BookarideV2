@@ -10,6 +10,7 @@ import {
   MapPin,
   ArrowRight,
   CheckCircle,
+  Phone,
 } from 'lucide-react'
 
 const FEATURES = [
