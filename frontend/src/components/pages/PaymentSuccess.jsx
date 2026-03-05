@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle, Calendar, MapPin, Clock, Users, ArrowRight, Phone, Mail, Loader2 } from 'lucide-react'
+import {
+  CheckCircle, Calendar, MapPin, Clock, Users, ArrowRight,
+  Phone, Mail, Loader2, Hash, AlertCircle,
+} from 'lucide-react'
 import api from '../../lib/api'
 
 export default function PaymentSuccess() {
@@ -10,16 +13,15 @@ export default function PaymentSuccess() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const sessionId = searchParams.get('session_id')
+  const bookingId = searchParams.get('booking_id')
 
   useEffect(() => {
-    if (!sessionId) {
-      setError('No session ID found')
+    if (!bookingId) {
+      setError('No booking ID found')
       setLoading(false)
       return
     }
-
-    api.get(`/api/payments/success?session_id=${sessionId}`)
+    api.get(`/payment/success?booking_id=${bookingId}`)
       .then(res => {
         setBooking(res.data.booking)
         setLoading(false)
@@ -28,14 +30,14 @@ export default function PaymentSuccess() {
         setError('Could not retrieve booking details')
         setLoading(false)
       })
-  }, [sessionId])
+  }, [bookingId])
 
   if (loading) {
     return (
-      <div className="section-padding text-center">
-        <div className="container-max max-w-lg">
+      <div className="min-h-[calc(100vh-88px)] flex items-center justify-center">
+        <div className="text-center">
           <Loader2 className="w-10 h-10 text-gold animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Confirming your payment&hellip;</p>
+          <p className="text-gray-500">Confirming your payment…</p>
         </div>
       </div>
     )
@@ -43,136 +45,115 @@ export default function PaymentSuccess() {
 
   if (error || !booking) {
     return (
-      <div className="section-padding text-center">
-        <div className="container-max max-w-lg">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-          <p className="text-gray-500 mb-6">{error || 'Booking not found.'}</p>
-          <p className="text-gray-500 mb-8">
-            Don&apos;t worry &mdash; if your payment was processed, you&apos;ll receive a confirmation email shortly.
-            Contact us if you need assistance.
+      <div className="min-h-[calc(100vh-88px)] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Something went wrong</h1>
+          <p className="text-gray-500 mb-3">{error || 'Booking not found.'}</p>
+          <p className="text-gray-400 text-sm mb-8">
+            Don't worry — if your payment was processed your booking is confirmed.
+            Call us and quote your booking reference.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="tel:+6421880793" className="btn-primary">
-              <Phone className="w-4 h-4 mr-2" /> Call Us
+            <a href="tel:+6421880793" className="inline-flex items-center justify-center gap-2 bg-gold hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-xl transition-all">
+              <Phone className="w-4 h-4" /> 021 880 793
             </a>
-            <Link to="/" className="btn-outline">Back to Home</Link>
+            <Link to="/" className="inline-flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 hover:border-gray-300 font-semibold px-6 py-3 rounded-xl transition-all">
+              Back to Home
+            </Link>
           </div>
         </div>
       </div>
     )
   }
 
-  const data = booking.data || booking
+  const b = booking
 
   return (
-    <div className="section-padding">
-      <div className="container-max max-w-2xl">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center mb-8"
-        >
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
-          <p className="text-gray-500">
-            Your reference number is{' '}
-            <span className="font-mono font-bold text-gold text-lg">
-              {data.reference || data.id}
-            </span>
-          </p>
+    <div className="min-h-[calc(100vh-88px)] bg-gradient-to-br from-green-50 to-white py-12">
+      <div className="container-max px-4 sm:px-6 max-w-2xl">
+
+        {/* Hero */}
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
+          <p className="text-gray-500 text-lg">Your transfer is locked in. See you on the day.</p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div className="p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900 text-lg">Trip Details</h2>
+        {/* Reference badge */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gold/30 p-6 text-center mb-6">
+          <p className="text-gray-400 text-xs uppercase tracking-widest mb-2">Booking Reference</p>
+          <p className="text-gold text-4xl font-mono font-bold tracking-wider">
+            #{b.referenceNumber || b.id?.slice(-6).toUpperCase()}
+          </p>
+          <p className="text-gray-500 text-sm mt-2">Save this — you'll need it if you call us</p>
+        </motion.div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Pickup</p>
-                  <p className="text-sm text-gray-700">{data.pickup_address}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Drop-off</p>
-                  <p className="text-sm text-gray-700">{data.dropoff_address}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Date</p>
-                  <p className="text-sm text-gray-700">{data.pickup_date}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Time</p>
-                  <p className="text-sm text-gray-700">{data.pickup_time}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Users className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Passengers</p>
-                  <p className="text-sm text-gray-700">{data.passengers}</p>
-                </div>
-              </div>
-            </div>
-
-            {data.total_price && (
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-700">Total Paid</span>
-                  <span className="text-xl font-bold text-gold">
-                    ${Number(data.total_price).toFixed(2)} NZD
-                  </span>
-                </div>
-              </div>
+        {/* Trip details */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-4">
+          <h2 className="font-semibold text-gray-900 text-lg mb-5">Trip Details</h2>
+          <div className="space-y-4">
+            <Detail icon={MapPin} label="Pickup" value={b.pickupAddress} />
+            <Detail icon={MapPin} label="Drop-off" value={b.dropoffAddress} />
+            <Detail icon={Calendar} label="Date" value={b.date} />
+            <Detail icon={Clock} label="Time" value={b.time} />
+            <Detail icon={Users} label="Passengers" value={b.passengers} />
+            {b.bookReturn && b.returnDate && (
+              <Detail icon={Calendar} label="Return" value={`${b.returnDate} at ${b.returnTime}`} />
             )}
+            {b.departureFlightNumber && <Detail icon={Hash} label="Flight" value={b.departureFlightNumber} />}
           </div>
 
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
-            <p className="text-sm text-gray-500">
-              A confirmation email has been sent to <strong>{data.email}</strong>.
-              Your driver will contact you before the pickup.
-            </p>
-          </div>
+          {b.totalPrice && (
+            <div className="mt-5 pt-5 border-t border-gray-100 flex justify-between items-center">
+              <span className="font-semibold text-gray-700">Total Paid</span>
+              <span className="text-2xl font-bold text-gold">${Number(b.totalPrice).toFixed(2)} NZD</span>
+            </div>
+          )}
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 text-center space-y-4"
-        >
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/book-now" className="btn-primary">
-              Book Another Ride <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-            <Link to="/" className="btn-outline">Back to Home</Link>
-          </div>
-
-          <p className="text-sm text-gray-400">
-            Questions? Call{' '}
-            <a href="tel:+6421880793" className="text-gold hover:underline">021 880 793</a>
-            {' '}or email{' '}
-            <a href="mailto:info@bookaride.co.nz" className="text-gold hover:underline">info@bookaride.co.nz</a>
-          </p>
+        {/* Confirmation note */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-sm text-green-800">
+          <strong>✓ Confirmation email sent to {b.email}</strong>
+          <p className="mt-1 text-green-700">Your driver will contact you before pickup. We monitor all flights automatically.</p>
         </motion.div>
+
+        {/* Actions */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-3">
+          <Link to="/book-now" className="flex-1 inline-flex items-center justify-center gap-2 bg-gold hover:bg-yellow-500 text-black font-bold px-6 py-3.5 rounded-xl transition-all shadow-md hover:shadow-gold/30">
+            Book Another <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link to="/" className="flex-1 inline-flex items-center justify-center gap-2 border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-semibold px-6 py-3.5 rounded-xl transition-all">
+            Back to Home
+          </Link>
+        </motion.div>
+
+        <p className="text-center text-sm text-gray-400 mt-6">
+          Questions?{' '}
+          <a href="tel:+6421880793" className="text-gold hover:underline font-medium">021 880 793</a>
+          {' '}·{' '}
+          <a href="mailto:info@bookaride.co.nz" className="text-gold hover:underline">info@bookaride.co.nz</a>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function Detail({ icon: Icon, label, value }) {
+  if (!value) return null
+  return (
+    <div className="flex items-start gap-3">
+      <div className="shrink-0 w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center mt-0.5">
+        <Icon className="w-4 h-4 text-gold" />
+      </div>
+      <div>
+        <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
+        <p className="text-sm text-gray-800 font-medium">{value}</p>
       </div>
     </div>
   )
