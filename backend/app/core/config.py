@@ -29,12 +29,19 @@ class Settings:
     PUBLIC_DOMAIN: str = os.environ.get("PUBLIC_DOMAIN", "https://bookaride.co.nz")
     PORT: int = int(os.environ.get("PORT", "10000"))
 
-    CORS_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://bookaride.co.nz",
-        "https://www.bookaride.co.nz",
-    ]
+    @property
+    def CORS_ORIGINS(self) -> list:
+        origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://bookaride.co.nz",
+            "https://www.bookaride.co.nz",
+        ]
+        # Allow any Vercel preview/production domain
+        extra = os.environ.get("EXTRA_CORS_ORIGINS", "")
+        if extra:
+            origins += [o.strip() for o in extra.split(",") if o.strip()]
+        return origins
 
 
 settings = Settings()

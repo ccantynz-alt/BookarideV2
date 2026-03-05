@@ -13,10 +13,11 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BookARide API", version="2.0.0")
 
-# CORS
+# CORS — allow listed origins + any *.vercel.app preview URLs
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
