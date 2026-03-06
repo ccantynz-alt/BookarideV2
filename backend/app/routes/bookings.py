@@ -52,6 +52,13 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         raise HTTPException(status_code=500, detail="Failed to save booking")
 
     logger.info(f"Booking created: {booking_obj.id} ref #{ref_number}")
+
+    # Send confirmation emails in background
+    from app.services.email import send_booking_confirmation, send_admin_notification
+
+    background_tasks.add_task(send_booking_confirmation, db, booking_dict)
+    background_tasks.add_task(send_admin_notification, db, booking_dict)
+
     return booking_dict
 
 
