@@ -14,6 +14,7 @@ import {
   Luggage,
   Star,
   RotateCcw,
+  Car,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import api from '../../lib/api'
@@ -22,9 +23,18 @@ import DateTimePicker from '../booking/DateTimePicker'
 import PriceBreakdown from '../booking/PriceBreakdown'
 
 const SERVICE_TYPES = [
-  { id: 'airport-transfer', label: 'Airport Transfer', icon: Plane },
-  { id: 'point-to-point', label: 'Point to Point', icon: MapPin },
+  { id: 'private-shuttle', label: 'Private Shuttle Service', icon: Car },
+  { id: 'airport-shuttle', label: 'Airport Shuttle', icon: Plane },
 ]
+
+function formatTime12h(t) {
+  if (!t) return t
+  const [hStr, m] = t.split(':')
+  const h = parseInt(hStr, 10)
+  const period = h < 12 ? 'AM' : 'PM'
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${h12}:${m} ${period}`
+}
 
 const STEPS = ['Trip Details', 'Your Details', 'Confirm & Pay']
 
@@ -37,7 +47,7 @@ export default function BookNow() {
   const [pricing, setPricing] = useState(null)
 
   const [form, setForm] = useState({
-    serviceType: 'airport-transfer',
+    serviceType: 'private-shuttle',
     pickupAddress: '',
     pickupAddresses: [],
     dropoffAddress: '',
@@ -120,7 +130,7 @@ export default function BookNow() {
   }
 
   async function submitBooking() {
-    if (form.bookReturn && !form.returnFlightNumber && form.serviceType === 'airport-transfer') {
+    if (form.bookReturn && !form.returnFlightNumber && form.serviceType === 'airport-shuttle') {
       setError('Return flight number is required for airport transfers')
       return
     }
@@ -376,7 +386,7 @@ export default function BookNow() {
                         onTimeChange={(v) => update('returnTime', v)}
                         minDate={form.date}
                       />
-                      {form.serviceType === 'airport-transfer' && (
+                      {form.serviceType === 'airport-shuttle' && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             Return Flight Number <span className="text-red-500">*</span>
@@ -395,7 +405,7 @@ export default function BookNow() {
                 </AnimatePresence>
 
                 {/* Flight numbers */}
-                {form.serviceType === 'airport-transfer' && (
+                {form.serviceType === 'airport-shuttle' && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Departure Flight</label>
@@ -530,9 +540,9 @@ export default function BookNow() {
                     <Row key={i} label={`Stop ${i + 1}`} value={a} />
                   ))}
                   <Row label="Drop-off" value={form.dropoffAddress} />
-                  <Row label="Date & Time" value={`${form.date} at ${form.time}`} />
+                  <Row label="Date & Time" value={`${form.date} at ${formatTime12h(form.time)}`} />
                   <Row label="Passengers" value={form.passengers} />
-                  {form.bookReturn && <Row label="Return" value={`${form.returnDate} at ${form.returnTime}`} />}
+                  {form.bookReturn && <Row label="Return" value={`${form.returnDate} at ${formatTime12h(form.returnTime)}`} />}
                   {form.departureFlightNumber && <Row label="Departure Flight" value={form.departureFlightNumber} />}
                   {form.arrivalFlightNumber && <Row label="Arrival Flight" value={form.arrivalFlightNumber} />}
                   {form.vipAirportPickup && <Row label="VIP Pickup" value="Yes" />}
