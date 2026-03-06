@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import api from '../../lib/api'
 import AdminLogin from './AdminLogin'
+import AdminRegister from './AdminRegister'
 import AdminDashboard from './AdminDashboard'
 import AdminBookings from './AdminBookings'
 import AdminLivePricing from './AdminLivePricing'
@@ -135,6 +136,7 @@ export default function AdminLayout() {
   return (
     <Routes>
       <Route path="login" element={<AdminLogin />} />
+      <Route path="register" element={<AdminRegister />} />
       <Route path="*" element={token ? <AdminShell /> : <Navigate to="/admin/login" replace />} />
     </Routes>
   )
