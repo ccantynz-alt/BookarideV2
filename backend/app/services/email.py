@@ -189,7 +189,7 @@ async def send_booking_confirmation(db, booking: dict) -> dict:
 
 async def send_admin_notification(db, booking: dict) -> dict:
     """Send new booking notification to admin."""
-    admin_email = "info@bookaride.co.nz"
+    admin_email = "bookings@bookaride.co.nz"
     ref = booking.get("referenceNumber", "N/A")
     name = booking.get("name", "Unknown")
     pickup = booking.get("pickupAddress", "")
