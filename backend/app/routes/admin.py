@@ -1,11 +1,20 @@
 import asyncio
 import logging
+import uuid
 from datetime import datetime, timezone
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import Optional
 
 from app.core.auth import get_current_admin
+from app.services.email import (
+    send_email,
+    send_booking_confirmation,
+    send_admin_notification,
+    log_email,
+)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
@@ -78,3 +87,232 @@ async def list_customers(current_admin: dict = Depends(get_current_admin)):
         customers[email]["total_spent"] += b.get("pricing", {}).get("totalPrice", 0)
 
     return {"customers": list(customers.values())}
+
+
+# ── Live Pricing (admin tool — no booking created) ──────────────
+
+
+class LivePriceRequest(BaseModel):
+    serviceType: str
+    pickupAddress: str
+    pickupAddresses: Optional[list] = []
+    dropoffAddress: str
+    passengers: int = 1
+    vipAirportPickup: bool = False
+    oversizedLuggage: bool = False
+    bookReturn: bool = False
+
+
+@router.post("/live-pricing")
+async def admin_live_pricing(
+    request: LivePriceRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """
+    Admin live pricing tool — calculates a price quote without creating a booking.
+    Used by admin staff to give customers quick price estimates.
+    """
+    from app.main import db
+    from app.routes.pricing import calculate_price, PriceRequest
+
+    price_request = PriceRequest(
+        serviceType=request.serviceType,
+        pickupAddress=request.pickupAddress,
+        pickupAddresses=request.pickupAddresses or [],
+        dropoffAddress=request.dropoffAddress,
+        passengers=request.passengers,
+        vipAirportPickup=request.vipAirportPickup,
+        oversizedLuggage=request.oversizedLuggage,
+        bookReturn=request.bookReturn,
+    )
+
+    result = await calculate_price(price_request)
+
+    # Log the pricing enquiry (not a booking)
+    await db.pricing_enquiries.insert_one({
+        "id": str(uuid.uuid4()),
+        "type": "live_pricing",
+        "admin": current_admin.get("username", "unknown"),
+        "request": request.dict(),
+        "result": result.dict(),
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {
+        "pricing": result.dict(),
+        "note": "This is a price estimate only — no booking has been created.",
+    }
+
+
+@router.get("/pricing-enquiries")
+async def list_pricing_enquiries(
+    current_admin: dict = Depends(get_current_admin),
+):
+    """List recent pricing enquiries made through the admin live pricing tool."""
+    from app.main import db
+
+    enquiries = (
+        await db.pricing_enquiries.find({}, {"_id": 0})
+        .sort("createdAt", -1)
+        .to_list(100)
+    )
+    return {"enquiries": enquiries, "total": len(enquiries)}
+
+
+# ── Email Management ────────────────────────────────────────────
+
+
+class TestEmailRequest(BaseModel):
+    to: str
+    subject: Optional[str] = "BookARide — Test Email"
+    message: Optional[str] = "This is a test email from the BookARide admin panel."
+
+
+@router.post("/email/test")
+async def send_test_email(
+    data: TestEmailRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Send a test email to verify the email delivery system."""
+    from app.main import db
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1a1a2e; color: #d4a843; padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
+            <h1 style="margin: 0;">BookARide</h1>
+            <p style="color: #ccc; margin: 8px 0 0;">Email Test</p>
+        </div>
+        <div style="padding: 24px; background: #fff; border: 1px solid #eee; border-radius: 0 0 12px 12px;">
+            <p>{data.message}</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;">
+            <p style="font-size: 12px; color: #999;">
+                Sent by admin <strong>{current_admin.get('username', 'unknown')}</strong>
+                at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+            </p>
+        </div>
+    </div>
+    """
+
+    result = await send_email(to=data.to, subject=data.subject, html=html)
+    await log_email(
+        db,
+        to=data.to,
+        subject=data.subject,
+        status="sent" if result.get("success") else "failed",
+        details={**result, "admin": current_admin.get("username")},
+    )
+
+    if result.get("success"):
+        return {"message": f"Test email sent to {data.to}", "details": result}
+    else:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Email send failed: {result.get('error', 'Unknown error')}",
+        )
+
+
+@router.post("/email/send-confirmation/{booking_id}")
+async def resend_booking_confirmation(
+    booking_id: str,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Re-send booking confirmation email for a specific booking."""
+    from app.main import db
+
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    result = await send_booking_confirmation(db, booking)
+    if result.get("success"):
+        return {
+            "message": f"Confirmation email sent to {booking.get('email')}",
+            "details": result,
+        }
+    else:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Email send failed: {result.get('error', 'Unknown error')}",
+        )
+
+
+@router.get("/email/logs")
+async def get_email_logs(
+    current_admin: dict = Depends(get_current_admin),
+):
+    """View recent email send logs."""
+    from app.main import db
+
+    logs = (
+        await db.email_logs.find({}, {"_id": 0})
+        .sort("sentAt", -1)
+        .to_list(100)
+    )
+    return {"logs": logs, "total": len(logs)}
+
+
+# ── Booking lockdown (require confirmation for dangerous actions) ─
+
+
+@router.post("/bookings/{booking_id}/confirm")
+async def confirm_booking(
+    booking_id: str,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Confirm a pending booking and send confirmation email."""
+    from app.main import db
+
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.get("status") == "confirmed":
+        return {"message": "Booking is already confirmed"}
+
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "confirmed",
+            "confirmedAt": datetime.now(timezone.utc).isoformat(),
+            "confirmedBy": current_admin.get("username"),
+        }},
+    )
+
+    # Send confirmation email
+    updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    email_result = await send_booking_confirmation(db, updated_booking)
+
+    return {
+        "message": "Booking confirmed",
+        "email_sent": email_result.get("success", False),
+    }
+
+
+@router.post("/bookings/{booking_id}/cancel")
+async def cancel_booking(
+    booking_id: str,
+    reason: dict = None,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Cancel a booking. Requires admin authentication."""
+    from app.main import db
+
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.get("status") == "cancelled":
+        return {"message": "Booking is already cancelled"}
+
+    cancel_reason = (reason or {}).get("reason", "Cancelled by admin")
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "cancelled",
+            "cancelledAt": datetime.now(timezone.utc).isoformat(),
+            "cancelledBy": current_admin.get("username"),
+            "cancelReason": cancel_reason,
+        }},
+    )
+
+    return {"message": "Booking cancelled", "reason": cancel_reason}

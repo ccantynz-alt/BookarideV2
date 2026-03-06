@@ -344,6 +344,20 @@ CREATE TABLE IF NOT EXISTS return_alerts_sent (
 CREATE INDEX IF NOT EXISTS idx_return_alerts_key ON return_alerts_sent ((data->>'alert_key'));
 
 -- ============================================================
+-- PRICING ENQUIRIES (admin live pricing tool — no booking)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS pricing_enquiries (
+    _id         BIGSERIAL PRIMARY KEY,
+    id          TEXT UNIQUE,
+    data        JSONB NOT NULL DEFAULT '{}',
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pricing_enquiries_data ON pricing_enquiries USING GIN (data);
+CREATE INDEX IF NOT EXISTS idx_pricing_enquiries_admin ON pricing_enquiries ((data->>'admin'));
+
+-- ============================================================
 -- HELPER: Auto-create table for unknown collections
 -- This function is called by the compatibility layer when
 -- a collection is accessed that doesn't have a table yet.

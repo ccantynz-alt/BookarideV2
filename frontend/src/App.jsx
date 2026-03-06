@@ -7,6 +7,7 @@ import About from './components/pages/About'
 import Contact from './components/pages/Contact'
 import PaymentSuccess from './components/pages/PaymentSuccess'
 import NotFound from './components/pages/NotFound'
+import AdminLayout from './components/admin/AdminLayout'
 
 export default function App() {
   return (
@@ -25,12 +26,12 @@ export default function App() {
         <Route path="cruise-transfers" element={<Services />} />
         <Route path="hobbiton-transfers" element={<Services />} />
 
-        {/* Catch-all */}
+        {/* Catch-all (exclude admin) */}
         <Route path="*" element={<NotFound />} />
       </Route>
 
-      {/* Admin routes (no header/footer) — Session 5 */}
-      {/* <Route path="admin/*" element={<AdminLayout />} /> */}
+      {/* Admin routes (no header/footer — standalone layout) */}
+      <Route path="admin/*" element={<AdminLayout />} />
     </Routes>
   )
 }
