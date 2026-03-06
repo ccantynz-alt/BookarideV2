@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.core.auth import (
     create_access_token,
     get_current_admin,
+    get_optional_admin,
     hash_password,
     verify_password,
 )
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/admin", tags=["Auth"])
 @router.post("/register")
 async def register(
     data: AdminRegister,
-    current_admin: Optional[dict] = None,
+    current_admin: Optional[dict] = Depends(get_optional_admin),
 ):
     """
     Register a new admin user.
