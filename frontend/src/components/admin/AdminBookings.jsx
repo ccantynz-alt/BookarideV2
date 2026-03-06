@@ -11,7 +11,10 @@ import {
   ChevronUp,
   AlertTriangle,
   Lock,
+  DollarSign,
+  PlusCircle,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 
 const STATUS_BADGES = {
@@ -30,6 +33,7 @@ export default function AdminBookings() {
   const [actionLoading, setActionLoading] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState(null)
   const [message, setMessage] = useState(null)
+  const [priceOverride, setPriceOverride] = useState({ id: null, value: '', reason: '' })
 
   async function fetchBookings() {
     setLoading(true)
@@ -107,6 +111,27 @@ export default function AdminBookings() {
     }
   }
 
+  async function submitPriceOverride(id) {
+    if (!priceOverride.value || parseFloat(priceOverride.value) <= 0) {
+      showMessage('Please enter a valid price', 'error')
+      return
+    }
+    setActionLoading(id)
+    try {
+      const { data } = await api.patch(`/admin/bookings/${id}/price-override`, {
+        totalPrice: parseFloat(priceOverride.value),
+        reason: priceOverride.reason,
+      })
+      showMessage(data.message || 'Price updated')
+      setPriceOverride({ id: null, value: '', reason: '' })
+      fetchBookings()
+    } catch (err) {
+      showMessage(err.response?.data?.detail || 'Failed to update price', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const filtered = bookings.filter((b) => {
     if (!search) return true
     const q = search.toLowerCase()
@@ -176,6 +201,12 @@ export default function AdminBookings() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
+        <Link
+          to="/admin/create-booking"
+          className="px-4 py-2.5 bg-[#d4a843] text-white rounded-lg text-sm font-medium hover:bg-[#c49a3a] transition-colors flex items-center gap-1.5 shrink-0"
+        >
+          <PlusCircle className="w-4 h-4" /> New Booking
+        </Link>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -338,6 +369,58 @@ export default function AdminBookings() {
                       )}
                     </div>
 
+                    {/* Price override indicator */}
+                    {pricing.priceOverride && (
+                      <div className="sm:col-span-2 mt-2 flex items-center gap-1.5 text-xs text-amber-600 font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Price manually overridden by {pricing.overrideBy || 'admin'}
+                        {pricing.originalTotalPrice && <span> (was ${pricing.originalTotalPrice.toFixed(2)})</span>}
+                      </div>
+                    )}
+
+                    {/* Price override form */}
+                    {priceOverride.id === b.id ? (
+                      <div className="sm:col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2 space-y-2">
+                        <div className="text-xs font-semibold text-amber-800">OVERRIDE PRICE</div>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={priceOverride.value}
+                              onChange={(e) => setPriceOverride({ ...priceOverride, value: e.target.value })}
+                              placeholder="New price"
+                              className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            value={priceOverride.reason}
+                            onChange={(e) => setPriceOverride({ ...priceOverride, reason: e.target.value })}
+                            placeholder="Reason (optional)"
+                            className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => submitPriceOverride(b.id)}
+                            disabled={actionLoading === b.id}
+                            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700 disabled:opacity-50"
+                          >
+                            {actionLoading === b.id ? 'Saving...' : 'Save Price'}
+                          </button>
+                          <button
+                            onClick={() => setPriceOverride({ id: null, value: '', reason: '' })}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
                       {b.status === 'pending' && (
@@ -360,6 +443,12 @@ export default function AdminBookings() {
                       >
                         {actionLoading === b.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
                         Resend Email
+                      </button>
+                      <button
+                        onClick={() => setPriceOverride({ id: b.id, value: (pricing.totalPrice || b.totalPrice || 0).toFixed(2), reason: '' })}
+                        className="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors flex items-center gap-1.5"
+                      >
+                        <DollarSign className="w-4 h-4" /> Override Price
                       </button>
                       {b.status !== 'cancelled' && (
                         <button

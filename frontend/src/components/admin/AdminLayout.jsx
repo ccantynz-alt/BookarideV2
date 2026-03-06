@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   Shield,
+  PlusCircle,
 } from 'lucide-react'
 import api from '../../lib/api'
 import AdminLogin from './AdminLogin'
@@ -16,10 +17,12 @@ import AdminDashboard from './AdminDashboard'
 import AdminBookings from './AdminBookings'
 import AdminLivePricing from './AdminLivePricing'
 import AdminEmail from './AdminEmail'
+import AdminCreateBooking from './AdminCreateBooking'
 
 const NAV_ITEMS = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/bookings', label: 'Bookings', icon: BookOpen },
+  { path: '/admin/create-booking', label: 'New Booking', icon: PlusCircle },
   { path: '/admin/live-pricing', label: 'Live Pricing', icon: DollarSign },
   { path: '/admin/email', label: 'Email', icon: Mail },
 ]
@@ -116,6 +119,7 @@ function AdminShell() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="bookings" element={<AdminBookings />} />
+            <Route path="create-booking" element={<AdminCreateBooking />} />
             <Route path="live-pricing" element={<AdminLivePricing />} />
             <Route path="email" element={<AdminEmail />} />
           </Routes>
