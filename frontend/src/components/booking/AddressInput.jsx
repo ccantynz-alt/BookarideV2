@@ -3,6 +3,11 @@ import { MapPin, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import api from '../../lib/api'
 
+// Generate a session token per component mount (Google uses this for billing)
+function makeSessionToken() {
+  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+}
+
 export default function AddressInput({ label, value, onChange, placeholder, icon: Icon = MapPin }) {
   const [query, setQuery] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
@@ -10,6 +15,7 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef(null)
   const wrapperRef = useRef(null)
+  const sessionRef = useRef(makeSessionToken())
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,7 +49,9 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const { data } = await api.get('/places/autocomplete', { params: { input: val } })
+        const { data } = await api.get('/places/autocomplete', {
+          params: { input: val, sessiontoken: sessionRef.current },
+        })
         setSuggestions(data.predictions || [])
         setOpen(true)
       } catch {
@@ -60,6 +68,8 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
     onChange(desc)
     setOpen(false)
     setSuggestions([])
+    // New session token after selection (Google bills per session)
+    sessionRef.current = makeSessionToken()
   }
 
   return (
@@ -80,6 +90,7 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
             'focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold',
             'placeholder:text-gray-400 transition-colors'
           )}
+          autoComplete="off"
         />
         {loading && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />

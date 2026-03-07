@@ -9,6 +9,7 @@ from passlib.context import CryptContext
 from app.core.config import settings
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -53,4 +54,24 @@ async def get_current_admin(
     admin = await db.admin_users.find_one({"username": username}, {"_id": 0})
     if not admin:
         raise HTTPException(status_code=401, detail="Admin not found")
+    return admin
+
+
+async def get_optional_admin(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+) -> Optional[dict]:
+    """Dependency: returns admin dict if a valid token is present, else None."""
+    if credentials is None:
+        return None
+    try:
+        token_data = decode_token(credentials.credentials)
+    except HTTPException:
+        return None
+    username = token_data.get("sub")
+    if not username:
+        return None
+
+    from app.main import db
+
+    admin = await db.admin_users.find_one({"username": username}, {"_id": 0})
     return admin
