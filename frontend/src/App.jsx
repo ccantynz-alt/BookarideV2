@@ -40,7 +40,7 @@ export default function App() {
         <Route path="drive-with-us" element={<Navigate to="/contact" replace />} />
         <Route path="travel-agents" element={<Navigate to="/contact" replace />} />
 
-        {/* Catch-all */}
+        {/* Catch-all (exclude admin) */}
         <Route path="*" element={<NotFound />} />
       </Route>
 

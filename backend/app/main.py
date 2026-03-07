@@ -25,8 +25,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=["*"],  # Allow all origins for now to avoid CORS issues
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +33,9 @@ app.add_middleware(
 
 # Database handle
 db: NeonDatabase = None  # type: ignore
+
+# Track startup errors for diagnostics
+_startup_errors: list[str] = []
 
 
 # ── Scheduler ─────────────────────────────────────────────────────
@@ -77,17 +79,30 @@ async def _send_24h_reminders():
 async def startup():
     global db
     if not settings.DATABASE_URL:
-        logger.error("DATABASE_URL not set — cannot connect to database")
+        msg = "DATABASE_URL not set — cannot connect to database"
+        logger.error(msg)
+        _startup_errors.append(msg)
         return
-    db = await NeonDatabase.connect(settings.DATABASE_URL, min_size=5, max_size=50)
-    logger.info("Connected to Neon PostgreSQL")
+    try:
+        db = await NeonDatabase.connect(settings.DATABASE_URL, min_size=2, max_size=20)
+        logger.info("Connected to Neon PostgreSQL")
+    except Exception as e:
+        msg = f"Database connection failed: {e}"
+        logger.error(msg)
+        _startup_errors.append(msg)
+        return
 
     # Apply schema
-    schema_path = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
-    if os.path.exists(schema_path):
-        async with db.pool.acquire() as conn:
-            await conn.execute(open(schema_path).read())
-        logger.info("Schema applied")
+    try:
+        schema_path = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
+        if os.path.exists(schema_path):
+            async with db.pool.acquire() as conn:
+                await conn.execute(open(schema_path).read())
+            logger.info("Schema applied")
+    except Exception as e:
+        msg = f"Schema apply failed: {e}"
+        logger.error(msg)
+        _startup_errors.append(msg)
 
     # Start APScheduler
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -110,12 +125,21 @@ async def shutdown():
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "bookaride-api", "version": "2.0.0"}
+    return {
+        "status": "ok",
+        "service": "bookaride-api",
+        "version": "2.0.1",
+        "routes_loaded": len(_route_modules),
+        "route_errors": _route_errors,
+        "startup_errors": _startup_errors,
+    }
 
 
 @app.get("/health")
 @app.get("/healthz")
 async def health():
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
     try:
         await asyncio.wait_for(db.command("ping"), timeout=2.0)
         return {"status": "healthy", "database": "ok"}
@@ -125,12 +149,23 @@ async def health():
 
 # ── Routes ────────────────────────────────────────────────────────
 
-from app.routes import auth, bookings, places, payments, drivers, admin, pricing
 
-app.include_router(auth.router, prefix="/api")
-app.include_router(bookings.router, prefix="/api")
-app.include_router(places.router, prefix="/api")
-app.include_router(payments.router, prefix="/api")
-app.include_router(drivers.router, prefix="/api")
-app.include_router(admin.router, prefix="/api")
-app.include_router(pricing.router, prefix="/api")
+# ── Routes (with error handling per module) ──────────────────────
+
+_route_modules: list[str] = []
+_route_errors: list[str] = []
+
+ROUTE_MODULES = ["auth", "bookings", "places", "payments", "drivers", "admin", "pricing"]
+
+for _mod_name in ROUTE_MODULES:
+    try:
+        _mod = __import__(f"app.routes.{_mod_name}", fromlist=["router"])
+        _router = _mod.router
+        app.include_router(_router, prefix="/api")
+        app.include_router(_router)
+        _route_modules.append(_mod_name)
+        logger.info(f"Loaded route module: {_mod_name}")
+    except Exception as e:
+        error_msg = f"Failed to load route module '{_mod_name}': {e}\n{traceback.format_exc()}"
+        _route_errors.append(error_msg)
+        logger.error(error_msg)

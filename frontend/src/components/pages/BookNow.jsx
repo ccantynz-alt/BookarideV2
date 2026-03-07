@@ -397,7 +397,7 @@ export default function BookNow() {
                   <Row label="Pickup" value={form.pickupAddress} />
                   {form.pickupAddresses.filter(Boolean).map((a, i) => <Row key={i} label={`Stop ${i + 1}`} value={a} />)}
                   <Row label="Drop-off" value={form.dropoffAddress} />
-                  <Row label="Date & Time" value={`${form.date} at ${form.time}`} />
+                  <Row label="Date & Time" value={`${form.date} at ${formatTime12h(form.time)}`} />
                   <Row label="Passengers" value={form.passengers} />
                   {form.bookReturn && form.returnDate && <Row label="Return" value={`${form.returnDate} at ${form.returnTime}`} />}
                   {form.departureFlightNumber && <Row label="Departure Flight" value={form.departureFlightNumber} />}
