@@ -71,10 +71,11 @@ async def health():
 
 from app.routes import auth, bookings, places, payments, drivers, admin, pricing
 
-app.include_router(auth.router, prefix="/api")
-app.include_router(bookings.router, prefix="/api")
-app.include_router(places.router, prefix="/api")
-app.include_router(payments.router, prefix="/api")
-app.include_router(drivers.router, prefix="/api")
-app.include_router(admin.router, prefix="/api")
-app.include_router(pricing.router, prefix="/api")
+all_routers = [auth.router, bookings.router, places.router, payments.router, drivers.router, admin.router, pricing.router]
+
+for r in all_routers:
+    # Mount at /api/... (for Vite dev proxy: /api → localhost:10000)
+    app.include_router(r, prefix="/api")
+    # Also mount without /api prefix (for production where VITE_API_URL
+    # points directly to the backend, e.g. https://backend.onrender.com)
+    app.include_router(r)
