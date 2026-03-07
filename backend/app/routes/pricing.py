@@ -3,11 +3,14 @@ import os
 from typing import List, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter(tags=["Pricing"])
 logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 
 DEFAULT_FALLBACK_KM = 75.0
 LONG_DISTANCE_FALLBACK_KM = 200.0
@@ -165,7 +168,8 @@ def _apply_zone_minimums(pickup: str, dropoff: str, distance_km: float) -> float
 
 
 @router.post("/calculate-price", response_model=PriceBreakdown)
-async def calculate_price(request: PriceRequest):
+@limiter.limit("30/minute")
+async def calculate_price(http_request: Request, request: PriceRequest):
     try:
         geoapify_key = os.environ.get("GEOAPIFY_API_KEY", "")
         distance_km = None

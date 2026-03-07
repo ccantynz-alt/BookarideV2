@@ -1,84 +1,87 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Car, Users, Ship, MapPin } from 'lucide-react'
+import { ArrowRight, Car, Ship, MapPin, Check } from 'lucide-react'
 
 const SERVICES = [
   {
     icon: Car,
     title: 'Private Airport Transfer',
     desc: 'Direct door-to-door service in a private vehicle. Your driver tracks your flight and waits with a name board. Perfect for families, business travellers, and groups up to 11.',
-    features: ['Door-to-door service', 'Flight tracking', 'Meet & greet', 'Child seats available', 'Free cancellation (24h)'],
-    price: 'From $55',
+    features: ['Door-to-door service', 'Flight tracking included', 'Meet & greet at arrivals', 'Child seats available', 'Free cancellation (24h)'],
     path: '/book-now',
-  },
-  {
-    icon: Users,
-    title: 'Shared Shuttle',
-    desc: 'Share the ride from Auckland CBD to the airport. Daily scheduled departures with multiple pickup points. The most affordable way to get to the airport.',
-    features: ['Daily departures', 'CBD pickup points', 'Airport drop-off', 'From $25 per person', 'Pay on arrival option'],
-    price: 'From $25pp',
-    path: '/shared-shuttle',
   },
   {
     icon: Ship,
     title: 'Cruise Ship Transfers',
     desc: 'Reliable transfers to and from Auckland cruise terminal at Princes Wharf. All cruise lines, all ship sizes.',
-    features: ['Princes Wharf terminal', 'All cruise lines', 'Group discounts', 'Luggage handling', 'Flexible scheduling'],
-    price: 'From $65',
-    path: '/cruise-transfers',
+    features: ['Princes Wharf terminal', 'All cruise lines welcome', 'Group rates available', 'Luggage assistance', 'Flexible scheduling'],
+    path: '/book-now',
   },
   {
     icon: MapPin,
     title: 'Hobbiton Day Trip',
-    desc: 'Return transfers from Auckland to the world-famous Hobbiton Movie Set in Matamata. A magical day out for the whole family.',
-    features: ['Return transfers', 'Auckland pickup', 'Matamata direct', 'Flexible times', 'Group rates'],
-    price: 'From $180',
-    path: '/hobbiton-transfers',
+    desc: 'Return transfers from Auckland to the world-famous Hobbiton Movie Set in Matamata. A magical experience for the whole family.',
+    features: ['Return transfers included', 'Auckland pickup', 'Direct to Matamata', 'Flexible departure times', 'Group rates available'],
+    path: '/book-now',
   },
 ]
 
 export default function Services() {
   return (
-    <div className="section-padding">
-      <div className="container-max">
-        <div className="text-center mb-14">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Our Services</h1>
-          <p className="text-gray-500 max-w-2xl mx-auto">
-            From budget-friendly shared shuttles to premium private transfers across Auckland.
+    <section className="py-20 bg-gradient-to-br from-gray-50 to-white min-h-[calc(100vh-88px)]">
+      <div className="container-max px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">Our Services</h1>
+          <p className="text-gray-500 max-w-2xl mx-auto text-lg">
+            Premium private transfers across Auckland. Get an instant online quote — no obligation.
           </p>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-8 max-w-4xl mx-auto">
           {SERVICES.map((s) => (
-            <div key={s.title} className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 hover:border-gold/40 hover:shadow-lg transition-all">
-              <div className="flex flex-col lg:flex-row gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
-                      <s.icon className="w-5 h-5 text-gold" />
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900">{s.title}</h2>
-                    <span className="ml-auto text-sm font-semibold text-gold bg-gold-50 px-3 py-1 rounded-full">
-                      {s.price}
-                    </span>
-                  </div>
-                  <p className="text-gray-500 mb-4">{s.desc}</p>
-                  <ul className="grid sm:grid-cols-2 gap-2 mb-6">
-                    {s.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-gold shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link to={s.path} className="btn-primary text-sm px-6 py-2.5">
-                    Book Now <ArrowRight className="w-4 h-4 ml-1" />
-                  </Link>
+            <div key={s.title} className="bg-white rounded-2xl border-2 border-gray-100 hover:border-gold/40 hover:shadow-xl transition-all duration-300 p-8">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="shrink-0 w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
+                  <s.icon className="w-6 h-6 text-gold" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{s.title}</h2>
+                  <p className="text-gray-500 leading-relaxed">{s.desc}</p>
                 </div>
               </div>
+
+              <ul className="grid sm:grid-cols-2 gap-2.5 mb-8">
+                {s.features.map((f) => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
+                    <Check className="w-4 h-4 text-gold shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                to={s.path}
+                className="inline-flex items-center gap-2 bg-gold hover:bg-yellow-500 text-black font-semibold px-8 py-3.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-gold/30 hover:scale-105 text-sm"
+              >
+                Get Instant Quote <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           ))}
         </div>
+
+        {/* CTA */}
+        <div className="mt-16 text-center">
+          <div className="inline-block bg-gradient-to-br from-gray-900 to-black rounded-3xl border border-gold/30 px-10 py-10 max-w-2xl">
+            <h3 className="text-2xl font-bold text-white mb-3">Not sure which service you need?</h3>
+            <p className="text-gray-400 mb-6">Our booking form calculates your price instantly based on your route. Just enter your addresses and we'll do the rest.</p>
+            <Link
+              to="/book-now"
+              className="inline-flex items-center gap-2 bg-gold hover:bg-yellow-500 text-black font-bold px-10 py-4 rounded-xl transition-all duration-300 shadow-lg hover:scale-105"
+            >
+              Book Now — Get Instant Price <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }
