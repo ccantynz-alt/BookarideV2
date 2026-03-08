@@ -10,6 +10,17 @@ router = APIRouter(prefix="/payment", tags=["Payments"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/success")
+async def payment_success(booking_id: str):
+    """Public endpoint — fetch booking details after Stripe redirect."""
+    from app.main import db
+
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"booking": booking}
+
+
 @router.post("/create-checkout")
 async def create_checkout(data: dict):
     from app.main import db
@@ -40,8 +51,8 @@ async def create_checkout(data: dict):
                 "price_data": {
                     "currency": "nzd",
                     "product_data": {
-                        "name": f"BookARide - Ref #{booking.get('referenceNumber', 'N/A')}",
-                        "description": f"{booking.get('pickupAddress')} → {booking.get('dropoffAddress')}",
+                        "name": f"BookARide — Ref #{booking.get('referenceNumber', 'N/A')}",
+                        "description": f"{booking.get('pickupAddress', '')} → {booking.get('dropoffAddress', '')}",
                     },
                     "unit_amount": amount_cents,
                 },
@@ -100,6 +111,24 @@ async def stripe_webhook(request: Request):
                 {"$set": {"status": "completed"}},
             )
             logger.info(f"Payment confirmed for booking {booking_id}")
+
+            # Fire email + SMS notifications
+            booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+            if booking:
+                try:
+                    import asyncio
+                    from app.services.email import send_booking_confirmation, send_operator_new_booking
+                    from app.services.sms import send_booking_confirmation_sms, send_operator_sms
+
+                    await asyncio.gather(
+                        send_booking_confirmation(booking),
+                        send_operator_new_booking(booking),
+                        send_booking_confirmation_sms(booking),
+                        send_operator_sms(booking),
+                        return_exceptions=True,
+                    )
+                except Exception as e:
+                    logger.error(f"Notification error for booking {booking_id}: {e}")
 
     return {"received": True}
 
