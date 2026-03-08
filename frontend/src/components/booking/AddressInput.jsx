@@ -54,7 +54,8 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
         })
         setSuggestions(data.predictions || [])
         setOpen(true)
-      } catch {
+      } catch (err) {
+        console.error('[AddressInput] autocomplete error:', err?.response?.status, err?.response?.data || err.message)
         setSuggestions([])
       } finally {
         setLoading(false)
