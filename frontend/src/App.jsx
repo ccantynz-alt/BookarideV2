@@ -27,6 +27,8 @@ export default function App() {
         <Route path="services" element={<Services />} />
         <Route path="book-now" element={<BookNow />} />
         <Route path="about" element={<About />} />
+        <Route path="payment/success" element={<PaymentSuccess />} />
+        <Route path="payment-success" element={<PaymentSuccess />} />
         <Route path="contact" element={<Contact />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
         <Route path="terms-and-conditions" element={<Terms />} />

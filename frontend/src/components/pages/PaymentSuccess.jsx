@@ -13,15 +13,21 @@ export default function PaymentSuccess() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const sessionId = searchParams.get('session_id')
   const bookingId = searchParams.get('booking_id')
 
   useEffect(() => {
-    if (!bookingId) {
-      setError('No booking ID found')
+    if (!sessionId && !bookingId) {
+      setError('No booking reference found')
       setLoading(false)
       return
     }
-    api.get(`/payment/success?booking_id=${bookingId}`)
+
+    const params = sessionId
+      ? `session_id=${sessionId}`
+      : `booking_id=${bookingId}`
+
+    api.get(`/payment/success?${params}`)
       .then(res => {
         setBooking(res.data.booking)
         setLoading(false)
@@ -30,7 +36,7 @@ export default function PaymentSuccess() {
         setError('Could not retrieve booking details')
         setLoading(false)
       })
-  }, [bookingId])
+  }, [sessionId, bookingId])
 
   if (loading) {
     return (
