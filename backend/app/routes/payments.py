@@ -49,7 +49,7 @@ async def create_checkout(data: dict):
             }
         ],
         customer_email=booking.get("email"),
-        success_url=f"{settings.PUBLIC_DOMAIN}/payment-success?booking_id={booking_id}",
+        success_url=f"{settings.PUBLIC_DOMAIN}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&booking_id={booking_id}",
         cancel_url=f"{settings.PUBLIC_DOMAIN}/book-now?cancelled=true",
         metadata={"booking_id": booking_id},
     )
@@ -102,3 +102,42 @@ async def stripe_webhook(request: Request):
             logger.info(f"Payment confirmed for booking {booking_id}")
 
     return {"received": True}
+
+
+@router.get("/payment/success")
+async def payment_success(session_id: str = "", booking_id: str = ""):
+    """Retrieve booking details for the success page after payment or direct booking."""
+    from app.main import db
+
+    booking = None
+
+    if session_id:
+        # Look up by Stripe session ID
+        txn = await db.payment_transactions.find_one(
+            {"stripe_session_id": session_id}, {"_id": 0}
+        )
+        if txn:
+            booking = await db.bookings.find_one(
+                {"id": txn["booking_id"]}, {"_id": 0}
+            )
+    elif booking_id:
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    return {
+        "booking": {
+            "id": booking.get("id"),
+            "reference": booking.get("referenceNumber"),
+            "pickup_address": booking.get("pickupAddress"),
+            "dropoff_address": booking.get("dropoffAddress"),
+            "pickup_date": booking.get("date"),
+            "pickup_time": booking.get("time"),
+            "passengers": booking.get("passengers"),
+            "total_price": booking.get("pricing", {}).get("totalPrice"),
+            "email": booking.get("email"),
+            "status": booking.get("status"),
+            "payment_status": booking.get("payment_status"),
+        }
+    }

@@ -19,6 +19,7 @@ export default function App() {
         <Route path="book-now" element={<BookNow />} />
         <Route path="about" element={<About />} />
         <Route path="payment/success" element={<PaymentSuccess />} />
+        <Route path="payment-success" element={<PaymentSuccess />} />
         <Route path="contact" element={<Contact />} />
 
         {/* Placeholder routes — will be built in later sessions */}
