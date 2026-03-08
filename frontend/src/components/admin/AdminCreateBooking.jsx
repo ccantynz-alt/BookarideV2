@@ -35,6 +35,8 @@ export default function AdminCreateBooking() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
   const [calculatedPrice, setCalculatedPrice] = useState(null)
+  const [paymentLinkSent, setPaymentLinkSent] = useState(false)
+  const [paymentLinkLoading, setPaymentLinkLoading] = useState(false)
 
   const [form, setForm] = useState({
     serviceType: 'airport-transfer',
@@ -131,6 +133,18 @@ export default function AdminCreateBooking() {
     }
   }
 
+  async function sendPaymentLink(bookingId) {
+    setPaymentLinkLoading(true)
+    try {
+      await api.post(`/payment/send-payment-link/${bookingId}`)
+      setPaymentLinkSent(true)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to send payment link')
+    } finally {
+      setPaymentLinkLoading(false)
+    }
+  }
+
   if (success) {
     const booking = success.booking || {}
     return (
@@ -160,21 +174,42 @@ export default function AdminCreateBooking() {
             {form.sendConfirmation && (
               <div className="text-xs text-green-600 font-medium">Confirmation email sent to {booking.email}</div>
             )}
+            {paymentLinkSent && (
+              <div className="text-xs text-purple-600 font-medium">Payment link sent to {booking.email}</div>
+            )}
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate('/admin/bookings')}
-              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
-            >
-              View Bookings
-            </button>
-            <button
-              onClick={() => { setSuccess(null); setForm({ ...form, name: '', email: '', phone: '', notes: '', priceOverride: '', date: '', time: '' }); setCalculatedPrice(null) }}
-              className="flex-1 px-4 py-2.5 bg-[#d4a843] text-white rounded-lg text-sm font-medium hover:bg-[#c49a3a]"
-            >
-              Create Another
-            </button>
+          <div className="flex flex-col gap-3">
+            {!paymentLinkSent && booking.totalPrice > 0 && (
+              <button
+                onClick={() => sendPaymentLink(booking.id)}
+                disabled={paymentLinkLoading}
+                className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {paymentLinkLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><Send className="w-4 h-4" /> Send Payment Link to Customer</>
+                )}
+              </button>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate('/admin/bookings')}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+              >
+                View Bookings
+              </button>
+              <button
+                onClick={() => { setSuccess(null); setPaymentLinkSent(false); setForm({ ...form, name: '', email: '', phone: '', notes: '', priceOverride: '', date: '', time: '' }); setCalculatedPrice(null) }}
+                className="flex-1 px-4 py-2.5 bg-[#d4a843] text-white rounded-lg text-sm font-medium hover:bg-[#c49a3a]"
+              >
+                Create Another
+              </button>
+            </div>
           </div>
+          {error && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>
+          )}
         </div>
       </div>
     )
