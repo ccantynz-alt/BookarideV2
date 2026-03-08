@@ -13,6 +13,7 @@ import {
   Lock,
   DollarSign,
   PlusCircle,
+  CreditCard,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
@@ -106,6 +107,18 @@ export default function AdminBookings() {
       showMessage(data.message || 'Email sent')
     } catch (err) {
       showMessage(err.response?.data?.detail || 'Failed to send email', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function sendPaymentLink(id) {
+    setActionLoading(id)
+    try {
+      const { data } = await api.post(`/payment/send-payment-link/${id}`)
+      showMessage(data.message || 'Payment link sent')
+    } catch (err) {
+      showMessage(err.response?.data?.detail || 'Failed to send payment link', 'error')
     } finally {
       setActionLoading(null)
     }
@@ -450,6 +463,19 @@ export default function AdminBookings() {
                       >
                         <DollarSign className="w-4 h-4" /> Override Price
                       </button>
+                      {b.payment_status !== 'paid' && (
+                        <button
+                          onClick={() => setConfirmDialog({
+                            title: 'Send Payment Link',
+                            message: `Send a payment link to ${b.email} for booking #${b.referenceNumber} ($${(pricing.totalPrice || b.totalPrice || 0).toFixed(2)} NZD)?`,
+                            type: 'confirm',
+                            onConfirm: () => sendPaymentLink(b.id),
+                          })}
+                          className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors flex items-center gap-1.5"
+                        >
+                          <CreditCard className="w-4 h-4" /> Send Payment Link
+                        </button>
+                      )}
                       {b.status !== 'cancelled' && (
                         <button
                           onClick={() => setConfirmDialog({
