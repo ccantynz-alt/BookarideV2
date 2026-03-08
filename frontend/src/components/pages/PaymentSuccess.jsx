@@ -23,9 +23,9 @@ export default function PaymentSuccess() {
       return
     }
 
-    const params = sessionId
-      ? `session_id=${sessionId}`
-      : `booking_id=${bookingId}`
+    const params = bookingId
+      ? `booking_id=${bookingId}`
+      : `session_id=${sessionId}`
 
     api.get(`/payment/success?${params}`)
       .then(res => {

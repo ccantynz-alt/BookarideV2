@@ -53,11 +53,11 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
 
     logger.info(f"Booking created: {booking_obj.id} ref #{ref_number}")
 
-    # Send confirmation emails in background
-    from app.services.email import send_booking_confirmation, send_admin_notification
+    # Send pending-booking email to customer + alert operator
+    from app.services.email import send_booking_pending, send_operator_new_booking
 
-    background_tasks.add_task(send_booking_confirmation, db, booking_dict)
-    background_tasks.add_task(send_admin_notification, db, booking_dict)
+    background_tasks.add_task(send_booking_pending, booking_dict)
+    background_tasks.add_task(send_operator_new_booking, booking_dict)
 
     return booking_dict
 
