@@ -22,9 +22,19 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/success")
-async def payment_success(booking_id: str):
+async def payment_success(booking_id: str = None, session_id: str = None):
     """Public endpoint — fetch booking details after Stripe redirect."""
     from app.main import db
+
+    if not booking_id and session_id:
+        txn = await db.payment_transactions.find_one(
+            {"stripe_session_id": session_id}, {"_id": 0}
+        )
+        if txn:
+            booking_id = txn.get("booking_id")
+
+    if not booking_id:
+        raise HTTPException(status_code=400, detail="booking_id or session_id required")
 
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:

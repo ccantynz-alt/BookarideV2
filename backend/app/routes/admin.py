@@ -12,8 +12,7 @@ from app.core.auth import get_current_admin
 from app.services.email import (
     send_email,
     send_booking_confirmation,
-    send_admin_notification,
-    log_email,
+    send_operator_new_booking,
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -194,20 +193,22 @@ async def send_test_email(
     """
 
     result = await send_email(to=data.to, subject=data.subject, html=html)
-    await log_email(
-        db,
-        to=data.to,
-        subject=data.subject,
-        status="sent" if result.get("success") else "failed",
-        details={**result, "admin": current_admin.get("username")},
-    )
 
-    if result.get("success"):
-        return {"message": f"Test email sent to {data.to}", "details": result}
+    # Log the email attempt
+    await db.email_logs.insert_one({
+        "to": data.to,
+        "subject": data.subject,
+        "status": "sent" if result else "failed",
+        "admin": current_admin.get("username"),
+        "sentAt": datetime.now(timezone.utc).isoformat(),
+    })
+
+    if result:
+        return {"message": f"Test email sent to {data.to}"}
     else:
         raise HTTPException(
             status_code=502,
-            detail=f"Email send failed: {result.get('error', 'Unknown error')}",
+            detail="Email send failed — check Mailgun configuration",
         )
 
 
@@ -223,16 +224,15 @@ async def resend_booking_confirmation(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    result = await send_booking_confirmation(db, booking)
-    if result.get("success"):
+    result = await send_booking_confirmation(booking)
+    if result:
         return {
             "message": f"Confirmation email sent to {booking.get('email')}",
-            "details": result,
         }
     else:
         raise HTTPException(
             status_code=502,
-            detail=f"Email send failed: {result.get('error', 'Unknown error')}",
+            detail="Email send failed — check Mailgun configuration",
         )
 
 
@@ -353,10 +353,10 @@ async def admin_create_booking(
         f"Admin {current_admin.get('username')} created booking #{ref_number} for {data.name}"
     )
 
-    # Send confirmation email to customer + admin notification
+    # Send confirmation email to customer + operator notification
     if data.sendConfirmation:
-        await send_booking_confirmation(db, booking_dict)
-        await send_admin_notification(db, booking_dict)
+        await send_booking_confirmation(booking_dict)
+        await send_operator_new_booking(booking_dict)
 
     return {
         "message": f"Booking #{ref_number} created for {data.name}",
@@ -440,11 +440,11 @@ async def confirm_booking(
 
     # Send confirmation email
     updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-    email_result = await send_booking_confirmation(db, updated_booking)
+    email_result = await send_booking_confirmation(updated_booking)
 
     return {
         "message": "Booking confirmed",
-        "email_sent": email_result.get("success", False),
+        "email_sent": email_result,
     }
 
 
