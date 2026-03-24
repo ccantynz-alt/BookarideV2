@@ -99,7 +99,7 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
       </div>
 
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <ul className="absolute z-[60] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {suggestions.map((s, i) => (
             <li
               key={s.place_id || i}

@@ -195,7 +195,7 @@ export default function BookNow() {
         </AnimatePresence>
 
         {/* Form card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
           <AnimatePresence mode="wait">
 
             {/* ── Step 0: Trip Details ── */}
