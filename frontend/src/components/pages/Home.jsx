@@ -154,29 +154,33 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {SERVICES.map((service, i) => (
-              <motion.div
-                key={service.title}
-                initial="hidden"
-                whileInView="visible"
-                custom={i}
-                variants={fadeUp}
-                viewport={{ once: true, margin: '-50px' }}
-                className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm hover:shadow-lg hover:border-gold/30 transition-all duration-300 group"
-              >
-                <div className="w-14 h-14 bg-gold/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-gold group-hover:shadow-lg transition-all duration-300">
-                  <service.icon className="w-7 h-7 text-gold group-hover:text-white transition-colors duration-200" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{service.title}</h3>
-                <p className="text-gray-500 mb-6 text-sm leading-relaxed">{service.description}</p>
-                <ul className="space-y-2">
-                  {service.features.map((f) => (
-                    <li key={f} className="flex items-center text-sm text-gray-600">
-                      <Check className="w-4 h-4 text-gold mr-2.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
+              <Link key={service.title} to="/book-now" className="block">
+                <motion.div
+                  initial="hidden"
+                  whileInView="visible"
+                  custom={i}
+                  variants={fadeUp}
+                  viewport={{ once: true, margin: '-50px' }}
+                  className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm hover:shadow-lg hover:border-gold/30 transition-all duration-300 group h-full"
+                >
+                  <div className="w-14 h-14 bg-gold/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-gold group-hover:shadow-lg transition-all duration-300">
+                    <service.icon className="w-7 h-7 text-gold group-hover:text-white transition-colors duration-200" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{service.title}</h3>
+                  <p className="text-gray-500 mb-6 text-sm leading-relaxed">{service.description}</p>
+                  <ul className="space-y-2">
+                    {service.features.map((f) => (
+                      <li key={f} className="flex items-center text-sm text-gray-600">
+                        <Check className="w-4 h-4 text-gold mr-2.5 shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="inline-flex items-center gap-1 text-gold text-sm font-semibold mt-6 group-hover:gap-2 transition-all">
+                    Book Now <ArrowRight className="w-4 h-4" />
+                  </span>
+                </motion.div>
+              </Link>
             ))}
           </div>
         </div>
