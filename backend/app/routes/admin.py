@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.core.auth import get_current_admin
+from app.models.booking import validate_status_transition, get_allowed_transitions
 from app.services.email import (
     send_email,
     send_booking_confirmation,
@@ -419,15 +420,26 @@ async def confirm_booking(
     booking_id: str,
     current_admin: dict = Depends(get_current_admin),
 ):
-    """Confirm a pending booking and send confirmation email."""
+    """Confirm a pending booking and send confirmation email. Enforces state machine."""
     from app.main import db
 
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    if booking.get("status") == "confirmed":
+    current_status = booking.get("status", "pending")
+    if current_status == "confirmed":
         return {"message": "Booking is already confirmed"}
+
+    if not validate_status_transition(current_status, "confirmed"):
+        allowed = get_allowed_transitions(current_status)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot confirm booking — current status is '{current_status}'. "
+                f"Allowed transitions: {list(allowed) if allowed else 'none (terminal state)'}"
+            ),
+        )
 
     await db.bookings.update_one(
         {"id": booking_id},
@@ -454,15 +466,26 @@ async def cancel_booking(
     reason: dict = None,
     current_admin: dict = Depends(get_current_admin),
 ):
-    """Cancel a booking. Requires admin authentication."""
+    """Cancel a booking. Enforces state machine — cannot cancel completed bookings."""
     from app.main import db
 
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    if booking.get("status") == "cancelled":
+    current_status = booking.get("status", "pending")
+    if current_status == "cancelled":
         return {"message": "Booking is already cancelled"}
+
+    if not validate_status_transition(current_status, "cancelled"):
+        allowed = get_allowed_transitions(current_status)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot cancel booking — current status is '{current_status}'. "
+                f"Allowed transitions: {list(allowed) if allowed else 'none (terminal state)'}"
+            ),
+        )
 
     cancel_reason = (reason or {}).get("reason", "Cancelled by admin")
     await db.bookings.update_one(

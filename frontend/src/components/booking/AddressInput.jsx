@@ -1,20 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapPin, Loader2 } from 'lucide-react'
+import { MapPin, Loader2, AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import api from '../../lib/api'
 
-// Generate a session token per component mount (Google uses this for billing)
 function makeSessionToken() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
 }
 
-export default function AddressInput({ label, value, onChange, placeholder, icon: Icon = MapPin }) {
+export default function AddressInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  icon: Icon = MapPin,
+  error,
+  required,
+}) {
   const [query, setQuery] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [focused, setFocused] = useState(false)
   const debounceRef = useRef(null)
   const wrapperRef = useRef(null)
+  const inputRef = useRef(null)
   const sessionRef = useRef(makeSessionToken())
 
   // Close dropdown on outside click
@@ -22,6 +31,7 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
     function handleClick(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setOpen(false)
+        setFocused(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -36,7 +46,7 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
   function handleInput(e) {
     const val = e.target.value
     setQuery(val)
-    onChange('')  // clear selected until user picks from dropdown
+    onChange('') // clear selected value until user picks from dropdown
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
@@ -55,7 +65,7 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
         setSuggestions(data.predictions || [])
         setOpen(true)
       } catch (err) {
-        console.error('[AddressInput] autocomplete error:', err?.response?.status, err?.response?.data || err.message)
+        console.error('[AddressInput] autocomplete error:', err?.response?.status)
         setSuggestions([])
       } finally {
         setLoading(false)
@@ -69,42 +79,79 @@ export default function AddressInput({ label, value, onChange, placeholder, icon
     onChange(desc)
     setOpen(false)
     setSuggestions([])
-    // New session token after selection (Google bills per session)
     sessionRef.current = makeSessionToken()
   }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      setOpen(false)
+      inputRef.current?.blur()
+    }
+  }
+
+  const hasError = !!error
+  const isSelected = !!value
 
   return (
     <div ref={wrapperRef} className="relative">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
       )}
       <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <Icon className={cn(
+          'absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors',
+          hasError ? 'text-red-400' : isSelected ? 'text-gold' : 'text-gray-400'
+        )} />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={handleInput}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true) }}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder || 'Enter address...'}
           className={cn(
-            'w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold',
-            'placeholder:text-gray-400 transition-colors'
+            'w-full pl-10 pr-10 py-3 border rounded-lg text-sm transition-all duration-200',
+            'placeholder:text-gray-400',
+            hasError
+              ? 'border-red-300 focus:ring-2 focus:ring-red-200 focus:border-red-400 bg-red-50/30'
+              : isSelected
+                ? 'border-gold/50 bg-gold-50/30 focus:ring-2 focus:ring-gold/30 focus:border-gold'
+                : 'border-gray-300 focus:ring-2 focus:ring-gold/40 focus:border-gold'
           )}
           autoComplete="off"
+          data-testid={`address-input-${(label || '').toLowerCase().replace(/\s+/g, '-')}`}
         />
         {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gold animate-spin" />
+        )}
+        {hasError && !loading && (
+          <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
         )}
       </div>
 
+      {/* Error message */}
+      {hasError && (
+        <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+          {error}
+        </p>
+      )}
+
+      {/* Suggestions dropdown */}
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <ul
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+          role="listbox"
+        >
           {suggestions.map((s, i) => (
             <li
               key={s.place_id || i}
               onClick={() => select(s)}
-              className="px-4 py-3 text-sm cursor-pointer hover:bg-gold-50 flex items-start gap-2 border-b border-gray-50 last:border-0"
+              role="option"
+              className="px-4 py-3 text-sm cursor-pointer hover:bg-gold-50 flex items-start gap-2 border-b border-gray-50 last:border-0 transition-colors"
             >
               <MapPin className="w-4 h-4 text-gold shrink-0 mt-0.5" />
               <span className="text-gray-700">{s.description}</span>

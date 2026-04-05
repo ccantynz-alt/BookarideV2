@@ -476,11 +476,11 @@ export default function AdminBookings() {
                           <CreditCard className="w-4 h-4" /> Send Payment Link
                         </button>
                       )}
-                      {b.status !== 'cancelled' && (
+                      {(b.status === 'pending' || b.status === 'confirmed') && (
                         <button
                           onClick={() => setConfirmDialog({
                             title: 'Cancel Booking',
-                            message: `Are you sure you want to cancel booking #${b.referenceNumber}? This action can be undone by re-confirming.`,
+                            message: `Are you sure you want to cancel booking #${b.referenceNumber}? Cancelled bookings cannot be re-activated.`,
                             type: 'cancel',
                             onConfirm: () => cancelBooking(b.id),
                           })}
